@@ -11,7 +11,9 @@ jobs:
         run: Invoke-WebRequest -Uri "https://github.com/dofastted/mail2api-releases/releases/download/desktop-v1.0.5/mail2api_1.0.5_x64-setup.exe" -OutFile setup.exe
       - name: Silent install
         shell: pwsh
-        run: Start-Process .\setup.exe -ArgumentList "/S" -Wait
+        run: |
+          Start-Process .\setup.exe -ArgumentList "/S","/D=C:\mail2api" -Wait -Verb RunAs
+          Get-ChildItem C:\mail2api -ErrorAction SilentlyContinue | Select-Object Name
       - name: Inspect layout
         shell: pwsh
         run: |
@@ -20,8 +22,7 @@ jobs:
       - name: Run server 100s
         shell: pwsh
         run: |
-          $exe = (Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter "mail2api.exe" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
-          if (-not $exe) { $exe = "C:\Program Files\mail2api\mail2api.exe" }
+          $exe = "C:\mail2api\mail2api.exe"
           Write-Host "using: $exe"
           $p = Start-Process $exe -PassThru -RedirectStandardOutput server.log -RedirectStandardError server.err
           Start-Sleep -Seconds 100
