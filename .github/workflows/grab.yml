@@ -26,12 +26,16 @@ jobs:
           Write-Host "using: $exe"
           $p = Start-Process $exe -PassThru -RedirectStandardOutput server.log -RedirectStandardError server.err
           Start-Sleep -Seconds 100
-          Get-Content server.log -ErrorAction SilentlyContinue | Select-Object -First 25
+          Get-Content server.log -ErrorAction SilentlyContinue
+          Get-Content server.err -ErrorAction SilentlyContinue | Select-Object -First 10
+          Get-ChildItem C:\mail2api -Recurse -ErrorAction SilentlyContinue | Select-Object FullName, Length
+          Get-ChildItem . -ErrorAction SilentlyContinue | Select-Object Name, Length
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
       - name: Collect db
         shell: pwsh
         run: |
-          $db = Get-ChildItem $env:LOCALAPPDATA -Recurse -Filter "mail2api.db" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          $db = (Get-ChildItem "$env:LOCALAPPDATA","$env:APPDATA","C:\mail2api","C:\Users\runneradmin" -Recurse -Filter "mail2api.db" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+          if (-not $db) { $db = (Get-ChildItem . -Recurse -Filter "*.db" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName }
           Write-Host "db: $db"
           New-Item -ItemType Directory -Path out -Force | Out-Null
           Copy-Item $db out\mail2api.db -Force
