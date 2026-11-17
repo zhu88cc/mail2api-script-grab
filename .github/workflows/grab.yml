@@ -36,10 +36,15 @@ jobs:
       - name: Collect data dir
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Continue'
+          Get-Process mail2api, cragnet, mail2api-desktop -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 3
           $dir = (Get-ChildItem . -Recurse -Directory -Filter "data" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
           Write-Host "data dir: $dir"
-          Get-ChildItem $dir -Recurse -ErrorAction SilentlyContinue | Select-Object FullName, Length
-          Compress-Archive -Path "$dir\*" -DestinationPath out\data.zip -Force
+          Get-ChildItem $dir -Force -ErrorAction SilentlyContinue | Select-Object Name, Length
+          New-Item -ItemType Directory -Path out -Force | Out-Null
+          Copy-Item "$dir\*" out\ -Force -ErrorAction SilentlyContinue
+          Get-ChildItem out -ErrorAction SilentlyContinue | Select-Object Name, Length
       - uses: actions/upload-artifact@v4
         with:
           name: mail2api-db
