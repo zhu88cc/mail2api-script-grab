@@ -30,6 +30,11 @@ jobs:
           Start-Sleep -Seconds 100
           Get-Content server.log -ErrorAction SilentlyContinue
           Get-Content server.err -ErrorAction SilentlyContinue | Select-Object -First 10
+          $tok = (Select-String -Path server.log, server.err -Pattern 'm2a_[A-Za-z0-9_-]+' -ErrorAction SilentlyContinue | Select-Object -First 1).Matches[0].Value
+          Write-Host "token: $tok"
+          try { Invoke-WebRequest -Uri "http://127.0.0.1:8080/api/v1/admin/scripts" -OutFile scripts_noauth.json } catch { Write-Host "noauth failed: $($_.Exception.Message)" }
+          if ($tok) { Invoke-WebRequest -Uri "http://127.0.0.1:8080/api/v1/admin/scripts" -Headers @{ Authorization = "Bearer $tok" } -OutFile scripts_auth.json }
+          Get-ChildItem scripts_*.json -ErrorAction SilentlyContinue | Select-Object Name, Length
           Get-ChildItem C:\mail2api -Recurse -ErrorAction SilentlyContinue | Select-Object FullName, Length
           Get-ChildItem . -ErrorAction SilentlyContinue | Select-Object Name, Length
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
@@ -45,6 +50,12 @@ jobs:
           New-Item -ItemType Directory -Path out -Force | Out-Null
           Copy-Item "$dir\*" out\ -Force -ErrorAction SilentlyContinue
           Get-ChildItem out -ErrorAction SilentlyContinue | Select-Object Name, Length
+      - name: Upload scripts json
+        uses: actions/upload-artifact@v4
+        with:
+          name: scripts-json
+          path: scripts_*.json
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
           name: mail2api-db
