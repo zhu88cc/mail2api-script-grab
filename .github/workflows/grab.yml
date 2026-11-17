@@ -48,4 +48,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: mail2api-db
-          path: out/data.zip
+          path: out/
