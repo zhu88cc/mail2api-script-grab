@@ -21,6 +21,8 @@ jobs:
           Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter "mail2api.exe" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
       - name: Run server 100s
         shell: pwsh
+        env:
+          MAIL2API_ENCRYPTION_KEY: e5c17165f931d963a25a6c0ed726bcf3506034c16d4a0b193e29865d74704faf
         run: |
           $exe = "C:\mail2api\mail2api.exe"
           Write-Host "using: $exe"
