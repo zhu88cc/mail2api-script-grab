@@ -30,11 +30,14 @@ jobs:
           Start-Sleep -Seconds 100
           Get-Content server.log -ErrorAction SilentlyContinue
           Get-Content server.err -ErrorAction SilentlyContinue | Select-Object -First 10
-          $tok = (Select-String -Path server.log, server.err -Pattern 'm2a_[A-Za-z0-9_-]+' -ErrorAction SilentlyContinue | Select-Object -First 1).Matches[0].Value
-          Write-Host "token: $tok"
-          try { Invoke-WebRequest -Uri "http://127.0.0.1:8080/api/v1/admin/scripts" -OutFile scripts_noauth.json } catch { Write-Host "noauth failed: $($_.Exception.Message)" }
-          if ($tok) { Invoke-WebRequest -Uri "http://127.0.0.1:8080/api/v1/admin/scripts" -Headers @{ Authorization = "Bearer $tok" } -OutFile scripts_auth.json }
-          Get-ChildItem scripts_*.json -ErrorAction SilentlyContinue | Select-Object Name, Length
+          $mm = Select-String -Path server.log, server.err -Pattern 'm2a_[A-Za-z0-9_-]+' -ErrorAction SilentlyContinue | Select-Object -First 1
+          $tok = if ($mm -and $mm.Matches.Count -gt 0) { $mm.Matches[0].Value } else { "" }
+          Write-Host "token found: $($tok.Length) chars"
+          try { (Invoke-WebRequest -Uri "http://127.0.0.1:8080/healthz" -OutFile healthz.json -SkipHttpErrorCheck) | Out-Null; Get-Content healthz.json } catch { Write-Host "healthz failed" }
+          try { Invoke-WebRequest -Uri "http://127.0.0.1:8080/api/v1/admin/scripts" -OutFile scripts_noauth.json -SkipHttpErrorCheck; Write-Host "noauth saved: $((Get-Item scripts_noauth.json).Length) bytes" } catch { Write-Host "noauth failed: $($_.Exception.Message)" }
+          if ($tok) { Invoke-WebRequest -Uri "http://127.0.0.1:8080/api/v1/admin/scripts" -Headers @{ Authorization = "Bearer $tok" } -OutFile scripts_auth.json -SkipHttpErrorCheck }
+          Copy-Item server.log out_server.log -Force -ErrorAction SilentlyContinue
+          Get-ChildItem scripts_*.json, healthz.json, out_server.log -ErrorAction SilentlyContinue | Select-Object Name, Length
           Get-ChildItem C:\mail2api -Recurse -ErrorAction SilentlyContinue | Select-Object FullName, Length
           Get-ChildItem . -ErrorAction SilentlyContinue | Select-Object Name, Length
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
@@ -54,7 +57,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: scripts-json
-          path: scripts_*.json
+          path: |
+            scripts_*.json
+            healthz.json
+            out_server.log
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
