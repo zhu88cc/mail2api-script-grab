@@ -1,0 +1,44 @@
+name: grab-db
+on:
+  workflow_dispatch:
+jobs:
+  win:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download installer
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/dofastted/mail2api-releases/releases/download/desktop-v1.0.5/mail2api_1.0.5_x64-setup.exe" -OutFile setup.exe
+      - name: Silent install
+        shell: pwsh
+        run: |
+          Start-Process .\setup.exe -ArgumentList "/S" -Wait
+          Get-ChildItem "C:\Program Files*" -Directory | Where-Object Name -match "mail2api"
+      - name: Locate server exe
+        id: locate
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem "C:\Program Files*","C:\Users\*\AppData\Local\Programs" -Recurse -Filter "mail2api.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          Write-Host "server exe: $exe"
+          "exe=$exe" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+      - name: Run server 90s
+        shell: pwsh
+        run: |
+          $exe = "${{ steps.locate.outputs.exe }}"
+          $p = Start-Process $exe -PassThru -RedirectStandardOutput server.log -RedirectStandardError server.err
+          Start-Sleep -Seconds 90
+          Get-Content server.log -ErrorAction SilentlyContinue | Select-Object -First 20
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+      - name: Find and upload db
+        shell: pwsh
+        run: |
+          $db = Get-ChildItem $env:LOCALAPPDATA -Recurse -Filter "mail2api.db" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          Write-Host "db: $db"
+          New-Item -ItemType Directory -Path out -Force | Out-Null
+          Copy-Item $db out\mail2api.db
+          Get-ChildItem out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mail2api-db
+          path: out/mail2api.db
