@@ -33,16 +33,14 @@ jobs:
           Get-ChildItem C:\mail2api -Recurse -ErrorAction SilentlyContinue | Select-Object FullName, Length
           Get-ChildItem . -ErrorAction SilentlyContinue | Select-Object Name, Length
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
-      - name: Collect db
+      - name: Collect data dir
         shell: pwsh
         run: |
-          $db = (Get-ChildItem "$env:LOCALAPPDATA","$env:APPDATA","C:\mail2api","C:\Users\runneradmin" -Recurse -Filter "mail2api.db" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
-          if (-not $db) { $db = (Get-ChildItem . -Recurse -Filter "*.db" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName }
-          Write-Host "db: $db"
-          New-Item -ItemType Directory -Path out -Force | Out-Null
-          Copy-Item $db out\mail2api.db -Force
-          Get-ChildItem out
+          $dir = (Get-ChildItem . -Recurse -Directory -Filter "data" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+          Write-Host "data dir: $dir"
+          Get-ChildItem $dir -Recurse -ErrorAction SilentlyContinue | Select-Object FullName, Length
+          Compress-Archive -Path "$dir\*" -DestinationPath out\data.zip -Force
       - uses: actions/upload-artifact@v4
         with:
           name: mail2api-db
-          path: out/mail2api.db
+          path: out/data.zip
